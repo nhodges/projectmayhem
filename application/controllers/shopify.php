@@ -16,10 +16,6 @@ class Shopify extends CI_Controller {
 		
 		$base_url = 'https://' . $this->config->item( 'shopify_apikey' ) . ':' . $this->config->item( 'shopify_password' ) . '@' . $this->config->item( 'shopify_domain' ) . '.myshopify.com/';
 
-		// sync products from api to db
-		// $this->curl->create()
-
-		header('content-type: text/plain');
 		$this->curl->create( $base_url . "admin/products.json" );
 		$this->curl->option( CURLOPT_CAINFO, getcwd() . DIRECTORY_SEPARATOR . 'cacert.pem' );
 
@@ -27,13 +23,7 @@ class Shopify extends CI_Controller {
 
 		foreach ( $response->products as $product ) {
 
-			$dbproduct = array(
-				'shopify_id' => $product->id,
-				'title'      => $product->title
-			);
-
-			$this->db->ignore()
-			         ->insert( 'products', $dbproduct );
+			$this->db->query( "INSERT INTO products (shopify_id, title, last_sync) VALUES ({$product->id}, '{$product->title}', CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE last_sync = CURRENT_TIMESTAMP" );
 			$product_id = $this->db->insert_id();
 
 			foreach ( $product->variants as $variant ) {
@@ -58,8 +48,10 @@ class Shopify extends CI_Controller {
 
 				} else {
 
-					$this->db->where( 'shopify_id', $variant->id )
-					         ->update( 'variants', array( 'quantity' => $variant->inventory_quantity ) );
+					$this->db->set( 'quantity', $variant->inventory_quantity )
+					         ->set( 'last_sync', 'CURRENT_TIMESTAMP', FALSE)
+					         ->where( 'shopify_id', $variant->id )
+					         ->update( 'variants' );
 
 				}
 
