@@ -23,6 +23,10 @@ class Shopify extends CI_Controller {
 
 		*/
 		
+		if ( $_SERVER['REQUEST_METHOD'] !== 'POST' ) {
+			exit;
+		}
+
 		$base_url = 'https://' . $this->config->item( 'shopify_apikey' ) . ':' . $this->config->item( 'shopify_password' ) . '@' . $this->config->item( 'shopify_domain' ) . '.myshopify.com/';
 
 		$this->curl->create( $base_url . "admin/products.json" );
