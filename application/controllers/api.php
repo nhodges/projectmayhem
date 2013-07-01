@@ -94,6 +94,45 @@ class Api extends CI_Controller {
 
 	}
 
+	public function images( $id = null ) {
+
+		header('content-type: application/json');
+
+		$response = array();
+
+		if ( $id && is_numeric( $id ) ) {
+
+			$query = $this->db->select( '*' )
+			                  ->from( 'images' )
+			                  ->where( 'product_id', $id )
+			                  ->get();
+
+
+			if ( $query->num_rows() > 0 ) {
+
+				$images = $query->result();
+
+				foreach ( $images as $image ) {
+
+					$response[] = $image->src;
+
+				}
+
+				echo json_encode($response);
+
+			}
+
+		} else {
+
+			echo json_encode( array(
+				'error'         => true,
+				'error_message' => 'Product ID incorrectly provided.'
+			));
+
+		}
+
+	}
+
 }
 
 /* End of file api.php */

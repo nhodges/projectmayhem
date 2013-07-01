@@ -23,38 +23,18 @@ class Shopify extends CI_Controller {
 
 		foreach ( $response->products as $product ) {
 
-			$this->db->query( "INSERT INTO products (shopify_id, title, last_sync) VALUES ({$product->id}, '{$product->title}', CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE last_sync = CURRENT_TIMESTAMP" );
+			$this->db->query( "INSERT INTO products (shopify_id, title) VALUES ({$product->id}, '{$product->title}') ON DUPLICATE KEY UPDATE title = '{$product->title}', last_sync = CURRENT_TIMESTAMP" );
 			$product_id = $this->db->insert_id();
 
 			foreach ( $product->variants as $variant ) {
 
-				$query = $this->db->select( 'id' )
-				                  ->from( 'variants' )
-				                  ->where( 'shopify_id', $variant->id )
-				                  ->get();
+				$this->db->query( "INSERT INTO variants (product_id, shopify_id, sku, title, quantity) VALUES ({$product_id}, {$variant->id}, '{$variant->sku}', '{$variant->title}', {$variant->inventory_quantity}) ON DUPLICATE KEY UPDATE sku = '{$variant->sku}', title = '{$variant->title}', quantity = {$variant->inventory_quantity}, last_sync = CURRENT_TIMESTAMP" );
 
-				if ( $query->num_rows() == 0 ) {
+			}
 
-					$dbvariant = array(
-						'product_id' => $product_id,
-						'shopify_id' => $variant->id,
-						'sku'        => $variant->sku,
-						'title'      => $variant->title,
-						'quantity'   => $variant->inventory_quantity
-					);
+			foreach ( $product->images as $image ) {
 
-					$this->db->ignore()
-					         ->insert( 'variants', $dbvariant );
-
-				} else {
-
-					$this->db->set( 'quantity', $variant->inventory_quantity )
-					         ->set( 'last_sync', 'CURRENT_TIMESTAMP', FALSE)
-					         ->where( 'shopify_id', $variant->id )
-					         ->update( 'variants' );
-
-				}
-
+				$this->db->query( "INSERT INTO images (shopify_id, product_id, src) VALUES ({$image->id}, {$product_id}, '{$image->src}') ON DUPLICATE KEY UPDATE src = '{$image->src}', last_sync = CURRENT_TIMESTAMP" );
 
 			}
 
