@@ -13,6 +13,15 @@ class Shopify extends CI_Controller {
 	}
 
 	public function sync() {
+
+		/*
+
+			todo:
+
+				compare api's 'updated_at' to db's 'last_sync'
+				update api from db
+
+		*/
 		
 		$base_url = 'https://' . $this->config->item( 'shopify_apikey' ) . ':' . $this->config->item( 'shopify_password' ) . '@' . $this->config->item( 'shopify_domain' ) . '.myshopify.com/';
 
@@ -21,14 +30,44 @@ class Shopify extends CI_Controller {
 
 		$response = json_decode($this->curl->execute());
 
+		// print_r($response);
+
 		foreach ( $response->products as $product ) {
 
 			$this->db->query( "INSERT INTO products (shopify_id, title) VALUES ({$product->id}, '{$product->title}') ON DUPLICATE KEY UPDATE title = '{$product->title}', last_sync = CURRENT_TIMESTAMP" );
 			$product_id = $this->db->insert_id();
 
+			$options = array();
+
+			foreach ( $product->options as $option ) {
+
+				$this->db->query( "INSERT INTO option_types (product_id, shopify_id, type) VALUES ({$product_id}, {$option->id}, '{$option->name}') ON DUPLICATE KEY UPDATE last_sync = CURRENT_TIMESTAMP" );
+				$options[$option->position - 1] = $this->db->insert_id();
+
+			}
+
 			foreach ( $product->variants as $variant ) {
 
 				$this->db->query( "INSERT INTO variants (product_id, shopify_id, sku, title, quantity) VALUES ({$product_id}, {$variant->id}, '{$variant->sku}', '{$variant->title}', {$variant->inventory_quantity}) ON DUPLICATE KEY UPDATE sku = '{$variant->sku}', title = '{$variant->title}', quantity = {$variant->inventory_quantity}, last_sync = CURRENT_TIMESTAMP" );
+
+				if ( ! empty( $variant->option1 ) ) {
+
+					$this->db->query( "INSERT INTO options (product_id, option_id, name) VALUES ({$product_id}, {$options[0]}, '{$variant->option1}') ON DUPLICATE KEY UPDATE last_sync = CURRENT_TIMESTAMP" );
+
+				}
+				
+				if ( ! empty( $variant->option2 ) ) {
+
+					$this->db->query( "INSERT INTO options (product_id, option_id, name) VALUES ({$product_id}, {$options[1]}, '{$variant->option2}') ON DUPLICATE KEY UPDATE last_sync = CURRENT_TIMESTAMP" );
+
+				}
+				
+				if ( ! empty( $variant->option3 ) ) {
+
+					$this->db->query( "INSERT INTO options (product_id, option_id, name) VALUES ({$product_id}, {$options[2]}, '{$variant->option3}') ON DUPLICATE KEY UPDATE last_sync = CURRENT_TIMESTAMP" );
+
+				}
+				
 
 			}
 
